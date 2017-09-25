@@ -7,8 +7,8 @@
     "nodemon": "^1.11.0"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "TOKEN='' node index.js"
+    "test": "TOKEN='184349764:AAHiUalPK5DlDj0zA6r236D13QGUtAJAPTs' node index.js",
+    "start": "TOKEN='184349764:AAHiUalPK5DlDj0zA6r236D13QGUtAJAPTs' node index.js"
   },
   "author": "Mehrad77",
   "license": "GPL3",

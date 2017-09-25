@@ -5,10 +5,12 @@
       "first_name": "Mehrad",
       "username": "Mehrad77",
       "state": "normal",
+      "draft": 102872739,
+      "draft2": "",
       "log": [
         {
           "type": "signup",
-          "timestamp": "2017-09-25T09:28:02.125Z"
+          "timestamp": "2017-09-25T11:18:58.806Z"
         }
       ]
     }
