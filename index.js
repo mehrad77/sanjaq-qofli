@@ -23,11 +23,19 @@ db.defaults({ user: [],admis: [],analytics: [] })
 log.defaults({ sanjaq: [] })
     .write()
 ;
+/*
+states:
+0:normal (normal)
+1:wating for forward msg (wf-fm)
+2:wating for choosing level (wf-cl)
+3:wating for confirmation (wf-c)
+4: have new msg (hnm)
+*/
 var token = process.env.TOKEN; //token
 
 // Change this to wenhook fastest as you can (‍‍‍~mehrad)
 var bot = new TelegramBot(token, { polling: true });
-console.log("[...]Conected...");
+console.log("[...] Conected...");
 
 var replyKayboardMobile = {keyboard:[[{text: "بفرست",request_contact: true}]],"one_time_keyboard":true};
 var replyKayboardRemove = {ReplyKeyboardRemove:true};
@@ -49,18 +57,12 @@ bot.onText(/((\/start|start|شروع))\b/,  function (msg, match) {
             ]
         })
     };
-    if(!isSignUp(msg.chat.id))
+    if(signup(msg.chat.id,msg.chat.first_name,msg.chat.username)){
         bot.sendMessage(msg.chat.id, intro , mainKey);
+    }  
     else
-        bot.sendMessage(msg.chat.id, "چیکار می تونم بکنم برات؟", mainKey);
+        bot.sendMessage(msg.chat.id, "می‌خواهی کسی رو سنجاق کنی؟", mainKey);
 });
-bot.onText(/((\/manage|manage))\b/,  function (msg, match) {
-    bot.sendMessage(msg.chat.id, "به بخش مدیریت خوش آمدید", manageKey);
-});
-
-function isSignUp(chatid) {
-    return false;
-}
 
 bot.on('callback_query', function onCallbackQuery(callbackQuery) {
     const action = callbackQuery.data;
@@ -81,11 +83,6 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
                 bot.sendMessage(msg.chat.id,"خب یه پیام از کسی که می‌خواهی سنجاقش کنم فوروارد می‌کنی برام؟");
                 bot.editMessageReplyMarkup(main_Key,opts);
                 break;
-            case "credit":
-                var credit = getCredit(msg.chat.id);
-                bot.editMessageText("شما " + credit + "تومان اعتبار دارید :)",opts);
-                bot.editMessageReplyMarkup(backCredit,opts);
-                break;
             case "manage":
                 if(!isAdmin(msg.chat.id,admins))break;
                 var list = getProdList(msg.chat.id);
@@ -97,29 +94,31 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
                     console.log("uid",uid)
                     bot.answerCallbackQuery(callbackQuery.id, "کسانی شما رو سنجاق کردن اما شما اونا رو سنجاق نکردید. دوست داری بدونی کیان؟ \n فعلا نمی‌دونم باید چیکار کنی :|",false);
                 }
-                console.log("God Damn ERORR!");
         }
         bot.answerCallbackQuery(callbackQuery.id);
     }
 });
 
 // funstions // ------------------------------------------------------------------------------------------------------------------------------------------
-function singUp(chatid,first_name,username,phone_number){
-    //bot.sendMessage(id, chatid+" == "+first_name+" == @"+username+ "==>" +phone_number);
+function signup(chatid,first_name,username){
+    //bot.sendMessage(id, chatid+" == "+first_name+" == @"+username);
     var chatIdExist = db.get('user').find({ id: chatid }).value()
         console.log("chatId",chatIdExist);
     if(chatIdExist){
-        console.log("user is registerd alredy",chatIdExist);
-        bot.sendMessage(chatid, "تو که قبل ثبت‌نام کردی حاجی ! /start رو بزن !", { reply_markup: { remove_keyboard: true }});
+        console.log("[...] user is registerd alredy",chatIdExist);
+         return false;
     }
     else {
         var test = db.get('user')
-        .push({ id: chatid, first_name: first_name,username:username,credit:0,log:[{type:"signup",timestamp:new Date()}] })
+        .push({ id: chatid, first_name: first_name,username:username,state:"normal",log:[{type:"signup",timestamp:new Date()}] })
         .write();
-        console.log("writen: " + chatIdExist);
-        bot.sendMessage(chatid, username + `جان،
-        ثبت‌نام تموم شد ! الان دیگه می‌توندی خرید و اینجور چیزا کنی :)) /start رو بزن`, { reply_markup: { remove_keyboard: true }});
+        console.log("[...] User created");
+        return true;
     }
+}
+
+function isSignUp(chatid) {
+    return false;
 }
 
 function getUserList(chatid){
