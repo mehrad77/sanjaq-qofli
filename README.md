@@ -1,3 +1,4 @@
-This project is created from a GitLab [Project Template](https://docs.gitlab.com/ce/gitlab-basics/create-project.html)
+This project is just started, if you wanna contribute, Contact me at [@mehrad77](https://t.me/mehrad77) everywhere
 
-Additions and changes to the project can be proposed [on the original project](https://gitlab.com/gitlab-org/project-templates/express)
+Wanna run but didn't set global variables?
+use "TOKEN='your token' node index.js"
