@@ -82,25 +82,44 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
                 changeState(msg.chat.id,"f")
                 break;
             case "prevSanjaq":
-                bot.editMessageText("خب یه پیام از کسی که می‌خواهی سنجاقش کنم فوروارد می‌کنی برام؟",opts);
-                changeState(msg.chat.id,"normal")
+                try {
+                
+                    var sanjaqs = getUserSanjaqs(msg.chat.id);
+                    if(sanjaqs){
+                        var out = "شما تا به حال " + sanjaqs.length + "نفر را سنجاق کردید:\n\n";
+                        var i = 0;
+                        sanjaqs.forEach(function(sanjaq) {
+                            i = i + 1;
+                            out = out + i.toString() + ". " + sanjaq.name + "(@"+sanjaq.username+") \n";
+                            console.log("out: ",out);
+                        });
+                    } else {
+                        var out = "شما تا به حال کسی را سنجاق نکردید.";
+                    }
+                    bot.editMessageText(out,opts);
+                    changeState(msg.chat.id,"normal")
+                }
+                catch(err) {
+                    console.log("err:! ",err.message);
+                }
                 break;   
             case "finishIt":
                 bot.editMessageText("خب برات سنجاقش کردم ؛) اگه اون هم تو رو سنجاق کنه، بهتون می ‌گم.",opts);
                 var user = getUser(msg.chat.id);
-                sanjaq(msg.chat.id,user.draft[0],user.draft[1],user.draft[2],user.draft[4])
+                sanjaq(msg.chat.id,user.draft[0],user.draft[1],user.draft[2],user.draft[3])
+                console.log('lvl: ',user.draft[3]);
                 changeState(msg.chat.id,"normal");
                 break;
             default:
                 if(/(whoSanjaq_)\w+/g.test(action)){
                     var uid = text.substr(10);
-                    console.log("uid",uid);
+                    //console.log("uid",uid);
                     bot.answerCallbackQuery(callbackQuery.id, "کسانی شما رو سنجاق کردن اما شما اونا رو سنجاق نکردید. دوست داری بدونی کیان؟ \n فعلا نمی‌دونم باید چیکار کنی :|",true);
                 }
                 else if(/(lvl_)\w+/g.test(action)){
                     var lvl = text.substr(4);
-                    console.log("text: ",text);
-                    console.log("uid: ",callbackQuery);
+                    //console.log("text: ",text);
+
                      var mainKey = {
                         parse_mode:"HTML",
                         reply_markup: JSON.stringify({
@@ -114,7 +133,7 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
                         })
                     };
                     var user = getUser(msg.chat.id);
-                    console.log("user: ",user);
+                    //console.log("user: ",user);
                     setDraft(msg.chat.id,user.draft[0],user.draft[1],user.draft[2],lvl);
                     changeState(msg.chat.id,"c");
                     bot.editMessageText("خب، سطح " + lvl + " برای سنجاقت به " + user.draft[1] + "انتخاب شده. آیا تایید می‌کنی؟",opts);
@@ -140,26 +159,31 @@ bot.on('text',  function (msg, match) {
         console.log("2");
         var user = getUser(msg.chat.id);
         if(user.state == "f"){
-            console.log("3");
-            changeState(msg.chat.id,"l");
-            if(msg.forward_from.last_name)var last = " " + msg.forward_from.last_name;
-            else var last = "";
-            setDraft(msg.chat.id,msg.forward_from.id,msg.forward_from.first_name + last,msg.forward_from.username);
-            var lvlKey = {
-                parse_mode:"HTML",
-                reply_markup: JSON.stringify({
-                inline_keyboard: [
-                        [
-                            { text: "سطح 1", callback_data: "btn_lvl_1" },
-                            { text: "سطح 2", callback_data: "btn_lvl_2" },
-                            { text: "سطح 3", callback_data: "btn_lvl_3" },
-                            { text: "سطح 4", callback_data: "btn_lvl_4" }
+            if (msg.chat.id == msg.forward_from.id){
+                bot.sendMessage(msg.chat.id, "لوزر عزیز، خودت رو نمی‌تونی سنجاق کنی :) پیام یکی دیگه جز خودت رو فوروارد کن!"); 
+            }
+            else {
+                console.log("3");
+                changeState(msg.chat.id,"l");
+                if(msg.forward_from.last_name)var last = " " + msg.forward_from.last_name;
+                else var last = "";
+                setDraft(msg.chat.id,msg.forward_from.id,msg.forward_from.first_name + last,msg.forward_from.username,"");
+                var lvlKey = {
+                    parse_mode:"HTML",
+                    reply_markup: JSON.stringify({
+                    inline_keyboard: [
+                            [
+                                { text: "سطح 1", callback_data: "btn_lvl_1" },
+                                { text: "سطح 2", callback_data: "btn_lvl_2" },
+                                { text: "سطح 3", callback_data: "btn_lvl_3" },
+                                { text: "سطح 4", callback_data: "btn_lvl_4" }
+                            ]
                         ]
-                    ]
-                })
-            };
-            console.log("4");
-            bot.sendMessage(msg.chat.id, "خب باشه، پس می‌خواهی " + msg.forward_from.first_name + " رو سنجاق کنی. می‌خواهی سنجاقت از چه نوعی باشه؟" , lvlKey);
+                    })
+                };
+                console.log("4");
+                bot.sendMessage(msg.chat.id, "خب باشه، پس می‌خواهی " + msg.forward_from.first_name + " رو سنجاق کنی. می‌خواهی سنجاقت از چه نوعی باشه؟" , lvlKey);
+            }
         }
         else {
             bot.sendMessage(msg.chat.id, "لطفا /start رو بزن و از اول شروع کن.");    
@@ -197,7 +221,7 @@ function sanjaq(host,target,name,username,lvl){
     }
     else {
         var test = log.get('sanjaq')
-        .push({ id: host, target_id: target,username:username,lvl:lvl,name:name,timestamp:new Date()})
+        .push({ id: host, target_id: target,username:username,lvl:lvl,name:name,timestamp:new Date(),enable:true})
         .write();
         console.log("[...] sanjaq created");
         return true;
@@ -246,35 +270,22 @@ function getUserList(chatid){
                     .sortBy('timestamp')
                     .take(500)
                     .value()
-    console.log("users: ",chatIdExist);
+   //("users: ",chatIdExist);
     // if(chatIdExist){return chatIdExist.credit;}
     // else {return false;}
     return chatIdExist;
 }
-function getUserList(chatid){
-    var chatIdExist = db.get('user')
-                    .filter({available:true})
-                    .filter({user_id:chatid})
+function getUserSanjaqs(chatid){
+    var chatIdExist = log.get('sanjaq')
+                    .filter({enable:true})
+                    .filter({id:chatid})
                     .sortBy('timestamp')
-                    .take(500)
+                    .take(10)
                     .value()
-    console.log("users: ",chatIdExist);
-    // if(chatIdExist){return chatIdExist.credit;}
-    // else {return false;}
+    //console.log("sanjaqs: ",chatIdExist);
     return chatIdExist;
 }
-function findPrevS(chatid){
-    var chatIdExist = db.get('user')
-                    .filter({available:true})
-                    .filter({user_id:chatid})
-                    .sortBy('timestamp')
-                    .take(500)
-                    .value()
-    console.log("users: ",chatIdExist);
-    // if(chatIdExist){return chatIdExist.credit;}
-    // else {return false;}
-    return chatIdExist;
-}
+
     var addKey = {
 		parse_mode:"HTML",
         reply_markup: JSON.stringify({
