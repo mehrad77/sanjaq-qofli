@@ -45,6 +45,8 @@ bot.onText(/((\/start|start|شروع))\b/,  function (msg, match) {
                     { text: "یکی رو برام سنجاق کن", callback_data: "btn_doSanjaq" }
                 ],[
                     { text: "من رو کسی سنجاق کرده؟", callback_data: "btn_whoSanjaq_" + msg.chat.id}
+                ],[
+                    { text: "من کیا رو سنجاق کردم؟", callback_data: "btn_prevSanjaq" }
                 ]
             ]
         })
@@ -53,7 +55,9 @@ bot.onText(/((\/start|start|شروع))\b/,  function (msg, match) {
         bot.sendMessage(msg.chat.id, intro , mainKey);
     }  
     else
+        changeState(msg.chat.id,"normal");
         bot.sendMessage(msg.chat.id, "می‌خواهی کسی رو سنجاق کنی؟", mainKey);
+    
 });
 
 bot.on('callback_query', function onCallbackQuery(callbackQuery) {
@@ -71,27 +75,32 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
             case "cansel":
                 bot.editMessageText("خب بیخیالش شدیم :)",opts);
                 changeState(msg.chat.id,"normal")
-                changeDraft(msg.chat.id,"","");
+                setDraft(msg.chat.id,"","","","");
                 break;
             case "doSanjaq":
-                bot.sendMessage(msg.chat.id,"خب یه پیام از کسی که می‌خواهی سنجاقش کنم فوروارد می‌کنی برام؟");
+                bot.editMessageText("خب یه پیام از کسی که می‌خواهی سنجاقش کنم فوروارد می‌کنی برام؟",opts);
                 changeState(msg.chat.id,"f")
                 break;
+            case "prevSanjaq":
+                bot.editMessageText("خب یه پیام از کسی که می‌خواهی سنجاقش کنم فوروارد می‌کنی برام؟",opts);
+                changeState(msg.chat.id,"normal")
+                break;   
             case "finishIt":
-                bot.sendMessage(msg.chat.id,"خب برات سنجاقش کردم ؛) اگه اون هم تو رو سنجاق کنه، بهتون می ‌گم.");
-                changeState(msg.chat.id,"normal");
+                bot.editMessageText("خب برات سنجاقش کردم ؛) اگه اون هم تو رو سنجاق کنه، بهتون می ‌گم.",opts);
                 var user = getUser(msg.chat.id);
-                sanjaq(msg.chat.id,user.draft,user.draft2,"فلانی","@mehrad77")
+                sanjaq(msg.chat.id,user.draft[0],user.draft[1],user.draft[2],user.draft[4])
+                changeState(msg.chat.id,"normal");
                 break;
             default:
                 if(/(whoSanjaq_)\w+/g.test(action)){
                     var uid = text.substr(10);
-                    console.log("uid",uid)
+                    console.log("uid",uid);
                     bot.answerCallbackQuery(callbackQuery.id, "کسانی شما رو سنجاق کردن اما شما اونا رو سنجاق نکردید. دوست داری بدونی کیان؟ \n فعلا نمی‌دونم باید چیکار کنی :|",true);
                 }
                 else if(/(lvl_)\w+/g.test(action)){
-                    var uid = text.substr(5);
-                    console.log("uid",uid)
+                    var lvl = text.substr(4);
+                    console.log("text: ",text);
+                    console.log("uid: ",callbackQuery);
                      var mainKey = {
                         parse_mode:"HTML",
                         reply_markup: JSON.stringify({
@@ -105,9 +114,19 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
                         })
                     };
                     var user = getUser(msg.chat.id);
-                    changeDraft(msg.chat.id,user.draft,uid);
-                    changeState(msg.chat.id,"c")
-                    bot.sendMessage(msg.chat.id,"خب، سطح " + uid + " برای سنجاقت به " + user.draft2 + "انتخاب شده. آیا تایید می‌کنی؟",mainKey);
+                    console.log("user: ",user);
+                    setDraft(msg.chat.id,user.draft[0],user.draft[1],user.draft[2],lvl);
+                    changeState(msg.chat.id,"c");
+                    bot.editMessageText("خب، سطح " + lvl + " برای سنجاقت به " + user.draft[1] + "انتخاب شده. آیا تایید می‌کنی؟",opts);
+                    bot.editMessageReplyMarkup({
+                        inline_keyboard: [
+                                [
+                                    { text: "نه بیخیالش", callback_data: "btn_cansel" }
+                                ],[
+                                    { text: "آره، سنجاقش کن", callback_data: "btn_finishIt"}
+                                ]
+                            ]
+                        },opts);
                 }
         }
         bot.answerCallbackQuery(callbackQuery.id);
@@ -122,8 +141,10 @@ bot.on('text',  function (msg, match) {
         var user = getUser(msg.chat.id);
         if(user.state == "f"){
             console.log("3");
-            changeState(msg.chat.id,"l")
-            changeDraft(msg.chat.id,msg.forward_from.id,msg.forward_from.first_name);
+            changeState(msg.chat.id,"l");
+            if(msg.forward_from.last_name)var last = " " + msg.forward_from.last_name;
+            else var last = "";
+            setDraft(msg.chat.id,msg.forward_from.id,msg.forward_from.first_name + last,msg.forward_from.username);
             var lvlKey = {
                 parse_mode:"HTML",
                 reply_markup: JSON.stringify({
@@ -160,13 +181,13 @@ function signup(chatid,first_name,username){
     }
     else {
         var test = db.get('user')
-        .push({ id: chatid, first_name: first_name,username:username,state:"normal",draft:"",draft2:"",log:[{type:"signup",timestamp:new Date()}] })
+        .push({ id: chatid, first_name: first_name,username:username,state:"normal",draft:[],log:[{type:"signup",timestamp:new Date()}] })
         .write();
         console.log("[...] User created");
         return true;
     }
 }
-function sanjaq(host,target,lvl,first_name,username){
+function sanjaq(host,target,name,username,lvl){
     //bot.sendMessage(id, chatid+" == "+first_name+" == @"+username);
     var chatIdExist = log.get('sanjaq').find({ id: host }).find({ target_id: target}).value()
         console.log("chatId",chatIdExist);
@@ -176,7 +197,7 @@ function sanjaq(host,target,lvl,first_name,username){
     }
     else {
         var test = log.get('sanjaq')
-        .push({ id: host, target_id: target,username:username,lvl:"normal",lastname:"فلانی",timestamp:new Date()})
+        .push({ id: host, target_id: target,username:username,lvl:lvl,name:name,timestamp:new Date()})
         .write();
         console.log("[...] sanjaq created");
         return true;
@@ -195,11 +216,15 @@ function changeState(theId,theState) {
         .write()
     return doit;
 }
-function changeDraft(theId,theDraft,theDraft2) {
+/*drafts:
+0:"target_id"
+1:"first and lastname"
+2:"username"
+3:"lvl"*/
+function setDraft(theId,theDraft,theDraft2,theDraft3,theDraft4) {
     var doit = db.get('user')
         .find({ id: theId })
-        .assign({ draft: theDraft})
-        .assign({ draft2: theDraft2})
+        .assign({ draft: [theDraft,theDraft2,theDraft3,theDraft4]})
         .write()
     return doit;
 }
@@ -226,20 +251,33 @@ function getUserList(chatid){
     // else {return false;}
     return chatIdExist;
 }
-
+function getUserList(chatid){
+    var chatIdExist = db.get('user')
+                    .filter({available:true})
+                    .filter({user_id:chatid})
+                    .sortBy('timestamp')
+                    .take(500)
+                    .value()
+    console.log("users: ",chatIdExist);
+    // if(chatIdExist){return chatIdExist.credit;}
+    // else {return false;}
+    return chatIdExist;
+}
+function findPrevS(chatid){
+    var chatIdExist = db.get('user')
+                    .filter({available:true})
+                    .filter({user_id:chatid})
+                    .sortBy('timestamp')
+                    .take(500)
+                    .value()
+    console.log("users: ",chatIdExist);
+    // if(chatIdExist){return chatIdExist.credit;}
+    // else {return false;}
+    return chatIdExist;
+}
     var addKey = {
 		parse_mode:"HTML",
         reply_markup: JSON.stringify({
             "force_reply": true
         })
-    };
-
-    var main_Key = {
-            inline_keyboard: [
-                [
-                    { text: "یکی رو برام سنجاق کن", callback_data: "btn_credit" }
-                ],[
-                    { text: "من رو کسی سنجاق کرده؟", callback_data: "btn_prod" }
-                ]
-            ]
     };
