@@ -54,9 +54,10 @@ bot.onText(/((\/start|start|شروع))\b/,  function (msg, match) {
     if(signup(msg.chat.id,msg.chat.first_name,msg.chat.username)){
         bot.sendMessage(msg.chat.id, intro , mainKey);
     }  
-    else
+    else {
         changeState(msg.chat.id,"normal");
         bot.sendMessage(msg.chat.id, "می‌خواهی کسی رو سنجاق کنی؟", mainKey);
+    }
     
 });
 
@@ -136,16 +137,17 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
                     //console.log("user: ",user);
                     setDraft(msg.chat.id,user.draft[0],user.draft[1],user.draft[2],lvl);
                     changeState(msg.chat.id,"c");
-                    bot.editMessageText("خب، سطح " + lvl + " برای سنجاقت به " + user.draft[1] + "انتخاب شده. آیا تایید می‌کنی؟",opts);
-                    bot.editMessageReplyMarkup({
-                        inline_keyboard: [
-                                [
-                                    { text: "نه بیخیالش", callback_data: "btn_cansel" }
-                                ],[
-                                    { text: "آره، سنجاقش کن", callback_data: "btn_finishIt"}
+                    bot.editMessageText("خب، سطح " + lvl + " برای سنجاقت به " + user.draft[1] + "انتخاب شده. آیا تایید می‌کنی؟",opts).then((successMessage) => {
+                         bot.editMessageReplyMarkup({
+                            inline_keyboard: [
+                                    [
+                                        { text: "نه بیخیالش", callback_data: "btn_cansel" },
+                                        { text: "آره، سنجاقش کن", callback_data: "btn_finishIt"}
+                                    ]
                                 ]
-                            ]
-                        },opts);
+                            },opts);
+                    });;
+                   
                 }
         }
         bot.answerCallbackQuery(callbackQuery.id);
@@ -162,11 +164,16 @@ bot.on('text',  function (msg, match) {
             if (msg.chat.id == msg.forward_from.id){
                 bot.sendMessage(msg.chat.id, "لوزر عزیز، خودت رو نمی‌تونی سنجاق کنی :) پیام یکی دیگه جز خودت رو فوروارد کن!"); 
             }
+            else if (SanjaqCheck(msg.chat.id,msg.forward_from.id)){
+                
+                bot.sendMessage(msg.chat.id, "امم… به نظر می‌رسه ایشون رو قبلا سنجاق کردی. دوبار سنجاقش کنی به این معنی نیست که بیشتر دوستش داری :))\n\n یکی دیگه رو بفرست اگه می‌خواهی"); 
+            }
             else {
                 console.log("3");
                 changeState(msg.chat.id,"l");
                 if(msg.forward_from.last_name)var last = " " + msg.forward_from.last_name;
                 else var last = "";
+
                 setDraft(msg.chat.id,msg.forward_from.id,msg.forward_from.first_name + last,msg.forward_from.username,"");
                 var lvlKey = {
                     parse_mode:"HTML",
@@ -181,7 +188,7 @@ bot.on('text',  function (msg, match) {
                         ]
                     })
                 };
-                console.log("4");
+                //console.log("4");
                 bot.sendMessage(msg.chat.id, "خب باشه، پس می‌خواهی " + msg.forward_from.first_name + " رو سنجاق کنی. می‌خواهی سنجاقت از چه نوعی باشه؟" , lvlKey);
             }
         }
@@ -198,9 +205,9 @@ bot.on('text',  function (msg, match) {
 function signup(chatid,first_name,username){
     //bot.sendMessage(id, chatid+" == "+first_name+" == @"+username);
     var chatIdExist = db.get('user').find({ id: chatid }).value()
-        console.log("chatId",chatIdExist);
+        //console.log("chatId",chatIdExist);
     if(chatIdExist){
-        console.log("[...] user is registerd alredy",chatIdExist);
+        console.log("[...] user is registerd alredy"/*,chatIdExist*/);
          return false;
     }
     else {
@@ -214,9 +221,9 @@ function signup(chatid,first_name,username){
 function sanjaq(host,target,name,username,lvl){
     //bot.sendMessage(id, chatid+" == "+first_name+" == @"+username);
     var chatIdExist = log.get('sanjaq').find({ id: host }).find({ target_id: target}).value()
-        console.log("chatId",chatIdExist);
+        //console.log("chatId",chatIdExist);
     if(chatIdExist){
-        console.log("[...] sanjaq is registerd alredy",chatIdExist);
+        //console.log("[...] sanjaq is registerd alredy",chatIdExist);
          return false;
     }
     else {
@@ -263,17 +270,17 @@ function isSignUp(chatid) {
     return false;
 }
 
-function getUserList(chatid){
-    var chatIdExist = db.get('user')
-                    .filter({available:true})
-                    .filter({user_id:chatid})
-                    .sortBy('timestamp')
-                    .take(500)
-                    .value()
-   //("users: ",chatIdExist);
-    // if(chatIdExist){return chatIdExist.credit;}
-    // else {return false;}
-    return chatIdExist;
+function SanjaqCheck(owner,target){
+    var chatIdExist = log.get('sanjaq')
+                    .filter({id:owner})
+                    .filter({target_id:target})
+                    .take(1)
+                    .value();
+    console.log("chatIdExist[0]: ",chatIdExist[0]);
+    if(chatIdExist[0] == undefined)
+        return false;
+    else
+        return true;
 }
 function getUserSanjaqs(chatid){
     var chatIdExist = log.get('sanjaq')
