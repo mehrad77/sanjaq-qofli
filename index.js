@@ -3,7 +3,7 @@ var TelegramBot = require('node-telegram-bot-api');
 const low = require('lowdb')
 var fs = require('fs');
 const fileAsync = require('lowdb/lib/storages/file-async')
-const id = 188406252; //mehrad id
+const id = -1001120962728; //Moderators group id
 function isAdmin(id,admins){
     var out = false;
     admins.forEach(function(admin) {
@@ -107,7 +107,8 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
             case "finishIt":
                 bot.editMessageText("خب برات سنجاقش کردم ؛) اگه اون هم تو رو سنجاق کنه، بهتون می ‌گم.",opts);
                 var user = getUser(msg.chat.id);
-                sanjaq(msg.chat.id,user.draft[0],user.draft[1],user.draft[2],user.draft[3])
+                sanjaq(msg.chat.id,user.draft[0],user.draft[1],user.draft[2],user.draft[3]);
+                bot.sendMessage(id,"کاربر " + user.first_name + " یک کاربر با نام " + user.draft[1] + " @" + user.draft[2] + "را سنجاق کرد.");
                 console.log('lvl: ',user.draft[3]);
                 changeState(msg.chat.id,"normal");
                 break;
@@ -223,7 +224,7 @@ function sanjaq(host,target,name,username,lvl){
     var chatIdExist = log.get('sanjaq').find({ id: host }).find({ target_id: target}).value()
         //console.log("chatId",chatIdExist);
     if(chatIdExist){
-        //console.log("[...] sanjaq is registerd alredy",chatIdExist);
+        console.log("Bug: code:00245",chatIdExist);
          return false;
     }
     else {
@@ -231,9 +232,32 @@ function sanjaq(host,target,name,username,lvl){
         .push({ id: host, target_id: target,username:username,lvl:lvl,name:name,timestamp:new Date(),enable:true})
         .write();
         console.log("[...] sanjaq created");
+        twoSanjaqedPersonFind(host,target).then(function(result) {
+            bot.sendMessage(host, "شما و "+ result[0].name +" دیگه همدیگه رو سنجاق کردی!");
+            bot.sendMessage(target, "شما و "+ result[1].name +" همدیگه رو سنجاق کردی!");
+        }).catch(function(error) {
+            console.log('Error: ' + error)
+        })
         return true;
     }
 }
+
+var twoSanjaqedPersonFind = function(one,two){
+    return new Promise(function (resolve, reject) {
+        var t1 = log.get('sanjaq').find({ id: one,target_id: two}).value();
+        var t2 = log.get('sanjaq').find({ id: two ,target_id: one}).value();
+        console.log("one:",one,"   two:",two);
+        console.log("t1:",t1,"   t2:",t2);
+        console.log("t1.id == t2.target_id => | ",t1.id," | -- | ",t2.target_id);
+
+        if (t1.id != undefined && (t1.id == t2.target_id)) {
+            resolve([t1,t2])
+        } else {
+            reject("ERROR:24785")
+        }
+    })
+}
+
 /*states:
 0:normal (normal)
 1:wating for forward msg (f)
